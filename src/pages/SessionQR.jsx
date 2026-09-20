@@ -16,36 +16,34 @@ export default function SessionQR() {
 
   // New Session Form State
   const [title, setTitle] = useState('')
-  const [date, setDate] = useState(() => {
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    return tomorrow.toISOString().split('T')[0]
-  })
-  const [time, setTime] = useState('10:00')
+  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [time, setTime] = useState(() => new Date().toTimeString().slice(0, 5))
 
   const loadSession = async () => {
-    if (!id || id === 'new') {
-      setSession(null)
-      setLoading(false)
-      return
-    }
     setLoading(true)
     try {
-      let currentSession = await dataService.getSessionById(id)
-
-      // Fallback: If specified ID not found, fetch latest active session or most recent session
-      if (!currentSession) {
-        const allSessions = await dataService.getSessions()
-        currentSession = allSessions.find(s => s.status === 'ACTIVE') || allSessions[0] || null
-      }
-
+      const allSessions = await dataService.getSessions()
       const allStudents = await dataService.getStudents()
       setStudents(allStudents)
 
-      if (currentSession) {
-        const currentAttendance = await dataService.getAttendanceBySession(currentSession.id)
-        setSession(currentSession)
-        setAttendance(currentAttendance)
+      // Set default auto title if empty
+      if (!title) {
+        setTitle(`اللقاء رقم ${allSessions.length + 1}`)
+      }
+
+      if (id && id !== 'new') {
+        let currentSession = await dataService.getSessionById(id)
+        if (!currentSession) {
+          currentSession = allSessions.find(s => s.status === 'ACTIVE') || null
+        }
+
+        if (currentSession) {
+          const currentAttendance = await dataService.getAttendanceBySession(currentSession.id)
+          setSession(currentSession)
+          setAttendance(currentAttendance)
+        } else {
+          setSession(null)
+        }
       } else {
         setSession(null)
       }
@@ -61,11 +59,8 @@ export default function SessionQR() {
 
     // Auto refresh live attendance every 2.5 seconds
     const interval = setInterval(() => {
-      if (id && id !== 'new') {
-        const targetId = session?.id || id
-        if (targetId && targetId !== 'new') {
-          dataService.getAttendanceBySession(targetId).then(setAttendance).catch(console.error)
-        }
+      if (id && id !== 'new' && session?.id) {
+        dataService.getAttendanceBySession(session.id).then(setAttendance).catch(console.error)
       }
     }, 2500)
 
@@ -131,33 +126,38 @@ export default function SessionQR() {
     ? `${window.location.origin}/checkin/${session.id}`
     : ''
 
-  if (id === 'new') {
+  if (loading) {
+    return <div className="text-center py-16 text-slate-400">جاري تحميل بيانات الجلسة...</div>
+  }
+
+  // Form View for New Session or if no session selected
+  if (id === 'new' || !session) {
     return (
-      <div className="max-w-2xl mx-auto bg-white border border-slate-200 rounded-3xl p-8 shadow-sm">
+      <div className="max-w-2xl mx-auto bg-white border border-slate-200 rounded-3xl p-8 shadow-sm my-4">
         <div className="text-center mb-6">
           <div className="w-14 h-14 bg-[#0072bc] rounded-2xl flex items-center justify-center text-white mx-auto mb-3 shadow-md">
             <Play className="w-7 h-7 text-amber-300" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">بدء محاضرة / جلسة جديدة</h1>
+          <h1 className="text-2xl font-bold text-slate-900">بدء محاضرة / لقاء جديد</h1>
           <p className="text-slate-500 text-sm mt-1">إنشاء رمز QR للحضور وتسجيل الدخول المباشر</p>
         </div>
 
         <form onSubmit={handleCreateSession} className="space-y-5">
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-2 uppercase">عنوان المحاضرة</label>
+            <label className="block text-xs font-semibold text-slate-600 mb-2 uppercase">عنوان اللقاء / المحاضرة</label>
             <input
               type="text"
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="مثال: المحاضرة 1: افتتاحيّة الدورة والتعارف (10:00 ص)"
-              className="w-full bg-slate-50 border border-slate-300 rounded-xl py-3 px-4 text-slate-900 text-sm outline-none focus:border-[#0072bc]"
+              placeholder="مثال: اللقاء رقم 1 (أو المحاضرة 1)"
+              className="w-full bg-slate-50 border border-slate-300 rounded-xl py-3.5 px-4 text-slate-900 text-sm outline-none focus:border-[#0072bc] font-bold"
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-2 uppercase">التاريخ</label>
+              <label className="block text-xs font-semibold text-slate-600 mb-2 uppercase">تاريخ اللقاء (تلقائي اليوم)</label>
               <input
                 type="date"
                 required
@@ -180,37 +180,12 @@ export default function SessionQR() {
 
           <button
             type="submit"
-            className="w-full py-4 bg-[#0072bc] hover:bg-sky-700 text-white font-bold rounded-xl shadow-md transition cursor-pointer flex items-center justify-center gap-2 text-base"
+            className="w-full py-4 bg-[#0072bc] hover:bg-sky-700 text-white font-extrabold rounded-2xl shadow-lg transition cursor-pointer flex items-center justify-center gap-2 text-base mt-4"
           >
             <QrCode className="w-5 h-5 text-amber-300" />
-            <span>إنتاج رمز QR وفتح الجلسة</span>
+            <span>إنتاج رمز QR وفتح اللقاء الآن</span>
           </button>
         </form>
-      </div>
-    )
-  }
-
-  if (loading) {
-    return <div className="text-center py-16 text-slate-400">جاري تحميل بيانات الجلسة...</div>
-  }
-
-  if (!session) {
-    return (
-      <div className="max-w-md mx-auto bg-white border border-slate-200 rounded-3xl p-8 text-center space-y-4 shadow-sm my-8">
-        <div className="w-16 h-16 bg-sky-50 text-[#0072bc] rounded-2xl flex items-center justify-center mx-auto border border-sky-100">
-          <QrCode className="w-8 h-8" />
-        </div>
-        <h2 className="text-xl font-bold text-slate-900">لا توجد جلسات مفتوحة حالياً</h2>
-        <p className="text-slate-500 text-xs leading-relaxed">
-          يمكنك بدء محاضرة جديدة وتوليد رمز QR للطلاب بالضغط على الزر أدناه.
-        </p>
-        <button
-          onClick={() => navigate('/admin/session/new')}
-          className="w-full py-3.5 bg-[#0072bc] hover:bg-sky-700 text-white font-bold rounded-xl text-sm transition shadow-md flex items-center justify-center gap-2 cursor-pointer"
-        >
-          <Play className="w-4 h-4 text-amber-300" />
-          <span>بدء محاضرة / جلسة جديدة الآن</span>
-        </button>
       </div>
     )
   }
