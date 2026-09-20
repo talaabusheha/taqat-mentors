@@ -239,8 +239,15 @@ export default function StudentCheckin() {
                 required
                 value={selectedStudentId}
                 onChange={(e) => {
-                  setSelectedStudentId(e.target.value)
+                  const id = e.target.value
+                  setSelectedStudentId(id)
                   setError('')
+                  const st = students.find(s => s.id === id)
+                  if (st) {
+                    setEnteredPasscode(st.passcode || st.student_code?.replace('STU-', '') || '1234')
+                  } else {
+                    setEnteredPasscode('')
+                  }
                 }}
                 className="w-full bg-slate-800 border border-slate-700 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 rounded-2xl py-3.5 px-4 text-white text-sm outline-none transition cursor-pointer"
               >

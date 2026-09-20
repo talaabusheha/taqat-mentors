@@ -14,8 +14,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Main Portal Gateway (Landing Selection) */}
-        <Route path="/" element={<PortalGateway />} />
+        {/* Main Entry Points: Home goes directly to Admin Login */}
+        <Route path="/" element={<Navigate to="/admin/login" replace />} />
 
         {/* Public Student Check-in Routes */}
         <Route path="/checkin" element={<StudentCheckin />} />

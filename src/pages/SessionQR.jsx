@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { dataService } from '../services/dataService'
-import { QrCode, Play, StopCircle, RefreshCw, Users, CheckCircle, Clock, ExternalLink, Sparkles, Trash2 } from 'lucide-react'
+import { QrCode, Play, StopCircle, RefreshCw, Users, CheckCircle, XCircle, UserCheck, Clock, ExternalLink, Sparkles, Trash2 } from 'lucide-react'
 
 export default function SessionQR() {
   const { id } = useParams()
@@ -12,6 +12,7 @@ export default function SessionQR() {
   const [attendance, setAttendance] = useState([])
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
+  const [filterTab, setFilterTab] = useState('ALL') // 'ALL' | 'PRESENT' | 'ABSENT'
 
   // New Session Form State
   const [title, setTitle] = useState('')
@@ -46,11 +47,12 @@ export default function SessionQR() {
   useEffect(() => {
     loadSession()
 
+    // Auto refresh live attendance every 2.5 seconds
     const interval = setInterval(() => {
       if (id && id !== 'new') {
         dataService.getAttendanceBySession(id).then(setAttendance).catch(console.error)
       }
-    }, 4000)
+    }, 2500)
 
     return () => clearInterval(interval)
   }, [id])
@@ -89,6 +91,23 @@ export default function SessionQR() {
       } catch (err) {
         alert('خطأ في حذف الجلسة: ' + err.message)
       }
+    }
+  }
+
+  // Mentor Manual Attendance Override
+  const handleManualMarkPresent = async (studentId) => {
+    if (!session) return
+    try {
+      await dataService.registerAttendance({
+        sessionId: session.id,
+        studentId,
+        status: 'PRESENT',
+        notes: 'تسجيل يدوي بواسطة الـ Mentor'
+      })
+      const currentAttendance = await dataService.getAttendanceBySession(session.id)
+      setAttendance(currentAttendance)
+    } catch (err) {
+      alert('خطأ أثناء التحضير اليدوي: ' + err.message)
     }
   }
 
@@ -164,6 +183,26 @@ export default function SessionQR() {
     return <div className="text-center py-16 text-slate-400">لم يتم العثور على الجلسة المطلوبة.</div>
   }
 
+  // Calculate attendance lists & metrics
+  const attendedStudentIds = new Set(attendance.map(a => a.student_id))
+  const presentCount = attendedStudentIds.size
+  const absentCount = Math.max(0, students.length - presentCount)
+
+  const studentListWithStatus = students.map((st) => {
+    const rec = attendance.find(a => a.student_id === st.id)
+    return {
+      ...st,
+      isPresent: !!rec,
+      scannedAt: rec ? rec.scanned_at : null
+    }
+  })
+
+  const filteredStudents = studentListWithStatus.filter((st) => {
+    if (filterTab === 'PRESENT') return st.isPresent
+    if (filterTab === 'ABSENT') return !st.isPresent
+    return true
+  })
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
       {/* Left Column: Huge QR Code Display */}
@@ -228,13 +267,16 @@ export default function SessionQR() {
         </div>
       </div>
 
-      {/* Right Column: Live Attendance Tracker Feed */}
-      <div className="lg:col-span-5 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
-          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <Users className="w-5 h-5 text-emerald-600" />
-            الناجحون في التسجيل Live ({attendance.length} / 40)
-          </h2>
+      {/* Right Column: Live Attendance Roster */}
+      <div className="lg:col-span-5 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <Users className="w-5 h-5 text-[#0072bc]" />
+              كشف حضور الطلاب Live
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">الحالة الأولية: غياب لحين مسح الـ QR Code</p>
+          </div>
           <button
             onClick={loadSession}
             className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:text-slate-900 transition"
@@ -244,36 +286,94 @@ export default function SessionQR() {
           </button>
         </div>
 
-        {attendance.length === 0 ? (
+        {/* Summary Filter Tabs */}
+        <div className="grid grid-cols-3 gap-2 text-center text-xs font-bold bg-slate-100 p-1.5 rounded-2xl">
+          <button
+            onClick={() => setFilterTab('ALL')}
+            className={`py-2 rounded-xl transition ${
+              filterTab === 'ALL' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            الكل ({students.length})
+          </button>
+          <button
+            onClick={() => setFilterTab('PRESENT')}
+            className={`py-2 rounded-xl transition ${
+              filterTab === 'PRESENT' ? 'bg-emerald-500 text-white shadow-sm' : 'text-emerald-700 hover:bg-emerald-100/50'
+            }`}
+          >
+            حاضر ({presentCount})
+          </button>
+          <button
+            onClick={() => setFilterTab('ABSENT')}
+            className={`py-2 rounded-xl transition ${
+              filterTab === 'ABSENT' ? 'bg-rose-500 text-white shadow-sm' : 'text-rose-700 hover:bg-rose-100/50'
+            }`}
+          >
+            غائب ({absentCount})
+          </button>
+        </div>
+
+        {/* Student Roster List */}
+        {filteredStudents.length === 0 ? (
           <div className="text-center py-12 text-slate-400 text-sm">
-            في انتظار دخول الطلاب وتسجيل الحضور...
+            لا يوجد طلاب في هذه الفئة حالياً.
           </div>
         ) : (
-          <div className="space-y-3 max-h-[460px] overflow-y-auto pr-1">
-            {attendance.map((record) => {
-              const student = students.find(s => s.id === record.student_id) || { full_name: 'طالب مسجل', student_code: 'STU' }
-              return (
-                <div key={record.id} className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">
-                      <CheckCircle className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-slate-900 text-sm">{student.full_name}</div>
-                      <div className="text-xs text-[#0072bc] font-mono font-bold">{student.student_code}</div>
-                    </div>
+          <div className="space-y-2.5 max-h-[440px] overflow-y-auto pr-1">
+            {filteredStudents.map((student) => (
+              <div
+                key={student.id}
+                className={`p-3 rounded-2xl border transition flex items-center justify-between ${
+                  student.isPresent
+                    ? 'bg-emerald-50/70 border-emerald-200'
+                    : 'bg-slate-50 border-slate-200'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+                    student.isPresent
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'bg-slate-200 text-slate-500'
+                  }`}>
+                    {student.isPresent ? <CheckCircle className="w-4.5 h-4.5" /> : <XCircle className="w-4.5 h-4.5" />}
                   </div>
-                  <div className="text-right">
-                    <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-700 text-xs font-bold">
-                      حاضر
-                    </span>
-                    <div className="text-[10px] text-slate-400 mt-1 font-medium">
-                      {new Date(record.scanned_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
-                    </div>
+                  <div>
+                    <div className="font-bold text-slate-900 text-sm">{student.full_name}</div>
+                    <div className="text-xs text-[#0072bc] font-mono font-bold">{student.student_code}</div>
                   </div>
                 </div>
-              )
-            })}
+
+                <div className="flex items-center gap-2 text-right">
+                  {student.isPresent ? (
+                    <div>
+                      <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-xs font-bold inline-block">
+                        حاضر 🟢
+                      </span>
+                      {student.scannedAt && (
+                        <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                          {new Date(student.scannedAt).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-0.5 rounded-md bg-rose-100 text-rose-800 text-xs font-semibold">
+                        غائب 🔴
+                      </span>
+                      <button
+                        onClick={() => handleManualMarkPresent(student.id)}
+                        className="px-2 py-1 bg-sky-100 hover:bg-sky-200 text-sky-800 rounded-lg text-[11px] font-bold transition flex items-center gap-1"
+                        title="تحضير يدوي"
+                      >
+                        <UserCheck className="w-3.5 h-3.5" />
+                        <span>تحضير</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
