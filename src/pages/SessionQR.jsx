@@ -25,18 +25,30 @@ export default function SessionQR() {
 
   const loadSession = async () => {
     if (!id || id === 'new') {
+      setSession(null)
       setLoading(false)
       return
     }
     setLoading(true)
     try {
-      const currentSession = await dataService.getSessionById(id)
-      const currentAttendance = await dataService.getAttendanceBySession(id)
-      const allStudents = await dataService.getStudents()
+      let currentSession = await dataService.getSessionById(id)
 
-      setSession(currentSession)
-      setAttendance(currentAttendance)
+      // Fallback: If specified ID not found, fetch latest active session or most recent session
+      if (!currentSession) {
+        const allSessions = await dataService.getSessions()
+        currentSession = allSessions.find(s => s.status === 'ACTIVE') || allSessions[0] || null
+      }
+
+      const allStudents = await dataService.getStudents()
       setStudents(allStudents)
+
+      if (currentSession) {
+        const currentAttendance = await dataService.getAttendanceBySession(currentSession.id)
+        setSession(currentSession)
+        setAttendance(currentAttendance)
+      } else {
+        setSession(null)
+      }
     } catch (err) {
       console.error(err)
     } finally {
@@ -50,12 +62,15 @@ export default function SessionQR() {
     // Auto refresh live attendance every 2.5 seconds
     const interval = setInterval(() => {
       if (id && id !== 'new') {
-        dataService.getAttendanceBySession(id).then(setAttendance).catch(console.error)
+        const targetId = session?.id || id
+        if (targetId && targetId !== 'new') {
+          dataService.getAttendanceBySession(targetId).then(setAttendance).catch(console.error)
+        }
       }
     }, 2500)
 
     return () => clearInterval(interval)
-  }, [id])
+  }, [id, session?.id])
 
   const handleCreateSession = async (e) => {
     e.preventDefault()
@@ -180,7 +195,24 @@ export default function SessionQR() {
   }
 
   if (!session) {
-    return <div className="text-center py-16 text-slate-400">لم يتم العثور على الجلسة المطلوبة.</div>
+    return (
+      <div className="max-w-md mx-auto bg-white border border-slate-200 rounded-3xl p-8 text-center space-y-4 shadow-sm my-8">
+        <div className="w-16 h-16 bg-sky-50 text-[#0072bc] rounded-2xl flex items-center justify-center mx-auto border border-sky-100">
+          <QrCode className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-bold text-slate-900">لا توجد جلسات مفتوحة حالياً</h2>
+        <p className="text-slate-500 text-xs leading-relaxed">
+          يمكنك بدء محاضرة جديدة وتوليد رمز QR للطلاب بالضغط على الزر أدناه.
+        </p>
+        <button
+          onClick={() => navigate('/admin/session/new')}
+          className="w-full py-3.5 bg-[#0072bc] hover:bg-sky-700 text-white font-bold rounded-xl text-sm transition shadow-md flex items-center justify-center gap-2 cursor-pointer"
+        >
+          <Play className="w-4 h-4 text-amber-300" />
+          <span>بدء محاضرة / جلسة جديدة الآن</span>
+        </button>
+      </div>
+    )
   }
 
   // Calculate attendance lists & metrics

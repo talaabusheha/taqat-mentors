@@ -15,7 +15,7 @@ export default function AdminLayout() {
 
   const navItems = [
     { label: 'لوحة التحكم', path: '/admin/dashboard', icon: LayoutDashboard },
-    { label: 'إدارة الطلاب (40)', path: '/admin/students', icon: Users },
+    { label: 'إدارة الطلاب', path: '/admin/students', icon: Users },
     { label: 'بدء جلسة & QR', path: '/admin/session/new', icon: PlusCircle },
     { label: 'تقارير Excel', path: '/admin/reports', icon: FileSpreadsheet },
   ]
