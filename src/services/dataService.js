@@ -169,22 +169,34 @@ export const dataService = {
   },
 
   async getSessionById(sessionId) {
-    const sessions = await this.getSessions()
-    return sessions.find(s => s.id === sessionId) || null
+    if (isSupabaseConfigured()) {
+      const { data, error } = await supabase.from('sessions').select('*').eq('id', sessionId).maybeSingle()
+      if (!error && data) return data
+      const sessions = await this.getSessions()
+      return sessions.find(s => s.id === sessionId) || null
+    } else {
+      const sessions = await this.getSessions()
+      return sessions.find(s => s.id === sessionId) || null
+    }
   },
 
   async createSession(sessionData) {
+    const qrToken = sessionData.qr_code_token || `TAQAT-QR-${Math.random().toString(36).substring(2, 9).toUpperCase()}`
+    const sessionPayload = {
+      ...sessionData,
+      status: sessionData.status || 'ACTIVE',
+      qr_code_token: qrToken
+    }
+
     if (isSupabaseConfigured()) {
-      const { data, error } = await supabase.from('sessions').insert([sessionData]).select()
+      const { data, error } = await supabase.from('sessions').insert([sessionPayload]).select()
       if (error) throw error
       return data[0]
     } else {
       const sessions = getLocalData(STORAGE_KEYS.SESSIONS, INITIAL_SESSIONS)
       const newSession = {
-        ...sessionData,
-        id: `sess-${Date.now()}`,
-        status: 'ACTIVE',
-        qr_code_token: `TAQAT-QR-${Math.random().toString(36).substring(2, 9).toUpperCase()}`
+        ...sessionPayload,
+        id: `sess-${Date.now()}`
       }
       const updated = [newSession, ...sessions]
       setLocalData(STORAGE_KEYS.SESSIONS, updated)
