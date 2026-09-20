@@ -26,22 +26,31 @@ const setLocalData = (key, data) => {
 export const dataService = {
   // Auth Check
   async loginAdmin(username, password) {
-    if (isSupabaseConfigured()) {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: username,
-        password: password
-      })
-      if (error) throw error
-      return data
-    } else {
-      // Simple mock authentication for MVP demonstration
-      if ((username === 'admin' || username === 'mentor@taqat.sa') && password === 'admin123') {
-        const user = { id: 'admin-1', email: 'mentor@taqat.sa', role: 'mentor' }
-        localStorage.setItem(STORAGE_KEYS.AUTH, JSON.stringify(user))
-        return { user }
-      }
-      throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة')
+    // 1. Allow demo login (admin / admin123) directly for instant access
+    if ((username === 'admin' || username === 'mentor@taqat.sa' || username === 'admin@taqat.sa') && password === 'admin123') {
+      const user = { id: 'admin-1', email: 'mentor@taqat.sa', role: 'mentor' }
+      localStorage.setItem(STORAGE_KEYS.AUTH, JSON.stringify(user))
+      return { user }
     }
+
+    // 2. If Supabase is configured, attempt Supabase Auth login
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: username,
+          password: password
+        })
+        if (error) throw error
+        if (data?.user) {
+          localStorage.setItem(STORAGE_KEYS.AUTH, JSON.stringify(data.user))
+        }
+        return data
+      } catch (err) {
+        throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة')
+      }
+    }
+
+    throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة')
   },
 
   getCurrentAdmin() {
