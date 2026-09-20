@@ -8,11 +8,15 @@ import SessionQR from './pages/SessionQR'
 import StudentCheckin from './pages/StudentCheckin'
 import CheckinSuccess from './pages/CheckinSuccess'
 import Reports from './pages/Reports'
+import PortalGateway from './pages/PortalGateway'
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Main Portal Gateway (Landing Selection) */}
+        <Route path="/" element={<PortalGateway />} />
+
         {/* Public Student Check-in Routes */}
         <Route path="/checkin" element={<StudentCheckin />} />
         <Route path="/checkin/:sessionId" element={<StudentCheckin />} />
@@ -31,8 +35,8 @@ export default function App() {
           <Route path="reports" element={<Reports />} />
         </Route>
 
-        {/* Root Redirect to Admin Dashboard */}
-        <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
+        {/* Wildcard Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   )
