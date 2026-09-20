@@ -33,9 +33,9 @@ export const exportAttendanceToExcel = (students, sessions, attendance, courseTi
       )
       const statusText = record
         ? record.status === 'PRESENT'
-          ? 'حاضر ✓'
-          : 'متأخر ⏰'
-        : 'غائب ✗'
+          ? 'حاضر'
+          : 'متأخر'
+        : 'غائب'
 
       if (record) attendedCount++
 

@@ -77,12 +77,31 @@ export const dataService = {
       const newStudent = {
         ...student,
         id: student.id || `std-${Date.now()}`,
+        passcode: student.passcode || student.student_code?.replace('STU-', '') || '1234',
         is_active: true
       }
       const updated = [newStudent, ...students]
       setLocalData(STORAGE_KEYS.STUDENTS, updated)
       return newStudent
     }
+  },
+
+  async registerStudentSelf({ full_name, email, phone }) {
+    // Generate a 4-digit easy passcode (e.g., 4829)
+    const randomPin = Math.floor(1000 + Math.random() * 9000).toString()
+    const studentCode = `STU-${randomPin}`
+
+    const newStudent = {
+      full_name,
+      email: email || '',
+      phone: phone || '',
+      student_code: studentCode,
+      passcode: randomPin,
+      is_active: true
+    }
+
+    const created = await this.addStudent(newStudent)
+    return { ...created, pin: randomPin }
   },
 
   async bulkAddStudents(studentsList) {
@@ -178,6 +197,31 @@ export const dataService = {
       const updated = sessions.map(s => s.id === sessionId ? { ...s, status: 'CLOSED' } : s)
       setLocalData(STORAGE_KEYS.SESSIONS, updated)
       return updated.find(s => s.id === sessionId)
+    }
+  },
+
+  async deleteSession(sessionId) {
+    if (isSupabaseConfigured()) {
+      const { error } = await supabase.from('sessions').delete().eq('id', sessionId)
+      if (error) throw error
+    } else {
+      const sessions = getLocalData(STORAGE_KEYS.SESSIONS, INITIAL_SESSIONS)
+      const updatedSessions = sessions.filter(s => s.id !== sessionId)
+      setLocalData(STORAGE_KEYS.SESSIONS, updatedSessions)
+
+      const attendance = getLocalData(STORAGE_KEYS.ATTENDANCE, INITIAL_ATTENDANCE)
+      const updatedAttendance = attendance.filter(a => a.session_id !== sessionId)
+      setLocalData(STORAGE_KEYS.ATTENDANCE, updatedAttendance)
+    }
+  },
+
+  async clearAllSessions() {
+    if (isSupabaseConfigured()) {
+      const { error } = await supabase.from('sessions').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+      if (error) throw error
+    } else {
+      setLocalData(STORAGE_KEYS.SESSIONS, [])
+      setLocalData(STORAGE_KEYS.ATTENDANCE, [])
     }
   },
 
