@@ -58,7 +58,7 @@ export default function Dashboard() {
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 border border-white/20 text-amber-300 text-xs font-bold mb-3">
               <Layers className="w-3.5 h-3.5" />
-              دورة التدريب الحالية (40 طالب)
+              دورة التدريب الحالية ({studentsCount} طالب)
             </div>
             <h1 className="text-2xl md:text-3xl font-extrabold">مرحباً بك يا Mentor</h1>
             <p className="text-sky-100 text-sm mt-1">نظام طاقات الذكي لإدارة الحضور وتوليد الـ QR Code</p>
