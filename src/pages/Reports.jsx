@@ -63,11 +63,15 @@ export default function Reports() {
   const excludedStudentsCount = studentsWithStats.filter((s) => s.isExcluded).length
   const regularStudentsCount = studentsWithStats.filter((s) => !s.isExcluded).length
 
-  const filteredStudents = studentsWithStats.filter((student) => {
-    if (filterMode === 'EXCLUDED') return student.isExcluded
-    if (filterMode === 'REGULAR') return !student.isExcluded
-    return true
-  })
+  const filteredStudents = studentsWithStats
+    .filter((student) => {
+      if (filterMode === 'EXCLUDED') return student.isExcluded
+      if (filterMode === 'REGULAR') return !student.isExcluded
+      return true
+    })
+    .sort((a, b) =>
+      (a.student_code || '').localeCompare(b.student_code || '', undefined, { numeric: true, sensitivity: 'base' })
+    )
 
   const handleExport = () => {
     exportAttendanceToExcel(students, sessions, attendance)

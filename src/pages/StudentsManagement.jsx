@@ -142,19 +142,23 @@ export default function StudentsManagement() {
 
   const excludedCount = studentsWithStats.filter(s => s.isExcluded).length
 
-  const filteredStudents = studentsWithStats.filter(s => {
-    const matchesSearch =
-      s.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-      s.student_code?.toLowerCase().includes(search.toLowerCase()) ||
-      s.email?.toLowerCase().includes(search.toLowerCase()) ||
-      s.phone?.includes(search)
+  const filteredStudents = studentsWithStats
+    .filter(s => {
+      const matchesSearch =
+        s.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+        s.student_code?.toLowerCase().includes(search.toLowerCase()) ||
+        s.email?.toLowerCase().includes(search.toLowerCase()) ||
+        s.phone?.includes(search)
 
-    if (!matchesSearch) return false
+      if (!matchesSearch) return false
 
-    if (filterType === 'EXCLUDED') return s.isExcluded
-    if (filterType === 'REGULAR') return !s.isExcluded
-    return true
-  })
+      if (filterType === 'EXCLUDED') return s.isExcluded
+      if (filterType === 'REGULAR') return !s.isExcluded
+      return true
+    })
+    .sort((a, b) =>
+      (a.student_code || '').localeCompare(b.student_code || '', undefined, { numeric: true, sensitivity: 'base' })
+    )
 
   return (
     <div className="space-y-6">

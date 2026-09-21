@@ -13,8 +13,13 @@ export const exportAttendanceToExcel = (students, sessions, attendance, courseTi
     return
   }
 
+  // Sort students by student_code (STU-XXXX) numerically
+  const sortedStudents = [...students].sort((a, b) =>
+    (a.student_code || '').localeCompare(b.student_code || '', undefined, { numeric: true, sensitivity: 'base' })
+  )
+
   // Build Excel rows dynamically
-  const exportData = students.map((student, index) => {
+  const exportData = sortedStudents.map((student, index) => {
     // Basic student info
     const row = {
       '#': index + 1,
