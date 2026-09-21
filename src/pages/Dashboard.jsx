@@ -7,6 +7,7 @@ export default function Dashboard() {
   const [studentsCount, setStudentsCount] = useState(0)
   const [sessions, setSessions] = useState([])
   const [activeSession, setActiveSession] = useState(null)
+  const [excludedCount, setExcludedCount] = useState(0)
   const [loading, setLoading] = useState(true)
 
   const loadData = async () => {
@@ -14,8 +15,28 @@ export default function Dashboard() {
     try {
       const students = await dataService.getStudents()
       const allSessions = await dataService.getSessions()
+      
+      let allAttendance = []
+      for (const sess of allSessions) {
+        const sessAtt = await dataService.getAttendanceBySession(sess.id)
+        allAttendance = [...allAttendance, ...sessAtt]
+      }
+
+      // Calculate excluded count
+      let excluded = 0
+      students.forEach((student) => {
+        let attended = 0
+        allSessions.forEach((sess) => {
+          const rec = allAttendance.find(a => a.student_id === student.id && a.session_id === sess.id)
+          if (rec) attended++
+        })
+        const absentCount = allSessions.length - attended
+        if (absentCount > 3) excluded++
+      })
+
       setStudentsCount(students.length)
       setSessions(allSessions)
+      setExcludedCount(excluded)
       setActiveSession(allSessions.find(s => s.status === 'ACTIVE') || null)
     } catch (err) {
       console.error(err)
@@ -61,7 +82,7 @@ export default function Dashboard() {
               دورة التدريب الحالية ({studentsCount} طالب)
             </div>
             <h1 className="text-2xl md:text-3xl font-extrabold">مرحباً بك يا Mentor</h1>
-            <p className="text-sky-100 text-sm mt-1">نظام طاقات الذكي لإدارة الحضور وتوليد الـ QR Code</p>
+            <p className="text-sky-100 text-sm mt-1">نظام طاقات الذكي لإدارة الحضور وتوليد الـ QR Code وتحديد المستثنين</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -74,7 +95,7 @@ export default function Dashboard() {
             </Link>
             <button
               onClick={loadData}
-              className="p-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/20 transition"
+              className="p-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/20 transition cursor-pointer"
               title="تحديث البيانات"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -84,7 +105,7 @@ export default function Dashboard() {
       </div>
 
       {/* Metric Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <div className="bg-white border border-slate-200/90 rounded-3xl p-6 flex items-center justify-between shadow-sm hover:shadow-md transition">
           <div>
             <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">إجمالي الطلاب المسجلين</p>
@@ -100,7 +121,7 @@ export default function Dashboard() {
 
         <div className="bg-white border border-slate-200/90 rounded-3xl p-6 flex items-center justify-between shadow-sm hover:shadow-md transition">
           <div>
-            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">إجمالي المحاضرات الجارية</p>
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">إجمالي المحاضرات المنفذة</p>
             <h3 className="text-3xl font-black text-slate-900 mt-2">{sessions.length} <span className="text-sm font-normal text-slate-500">جلسات</span></h3>
             <p className="text-xs text-slate-400 mt-3 font-medium">مكتملة ومؤرشفة</p>
           </div>
@@ -132,6 +153,21 @@ export default function Dashboard() {
           </div>
           <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center">
             <QrCode className="w-7 h-7" />
+          </div>
+        </div>
+
+        <div className={`border rounded-3xl p-6 flex items-center justify-between shadow-sm hover:shadow-md transition ${
+          excludedCount > 0 ? 'bg-rose-50 border-rose-200 text-rose-950' : 'bg-white border-slate-200'
+        }`}>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-rose-700">الطلاب المستثنون (&gt; 3 أيام)</p>
+            <h3 className="text-3xl font-black text-rose-600 mt-2">{excludedCount} <span className="text-sm font-normal text-rose-800">طالب</span></h3>
+            <Link to="/admin/reports" className="inline-flex items-center gap-1 text-xs text-rose-700 font-bold hover:underline mt-3">
+              عرض بتقرير Excel <ArrowUpRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+          <div className="w-14 h-14 rounded-2xl bg-rose-100 text-rose-600 border border-rose-200 flex items-center justify-center font-black">
+            🚨
           </div>
         </div>
       </div>

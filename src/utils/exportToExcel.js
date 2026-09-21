@@ -45,14 +45,20 @@ export const exportAttendanceToExcel = (students, sessions, attendance, courseTi
 
     // Calculate metrics
     const totalSessions = sessions.length
+    const absentCount = totalSessions - attendedCount
+    const isExcluded = absentCount > 3
+    const statusText = isExcluded ? '⚠️ مستثنى (تجاوز 3 أيام غياب)' : 'منتظم'
+
     const attendancePercentage = totalSessions > 0
       ? `${Math.round((attendedCount / totalSessions) * 100)}%`
       : '0%'
 
     row['إجمالي الجلسات'] = totalSessions
     row['عدد الحضور'] = attendedCount
-    row['عدد الغياب'] = totalSessions - attendedCount
+    row['عدد الغياب'] = absentCount
+    row['حالة الطالب / الاستثناء'] = statusText
     row['نسبة الحضور'] = attendancePercentage
+    row['توصية القرار'] = isExcluded ? 'مستثنى لكثرة الغياب (> 3 أيام)' : 'مستمر في الدورة'
 
     return row
   })

@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { dataService } from '../services/dataService'
-import { Users, UserPlus, Search, Phone, Mail, Trash2, FileText, CheckCircle, RefreshCw } from 'lucide-react'
+import { Users, UserPlus, Search, Phone, Mail, Trash2, FileText, CheckCircle, RefreshCw, UserX, AlertTriangle } from 'lucide-react'
 
 export default function StudentsManagement() {
   const [students, setStudents] = useState([])
+  const [sessions, setSessions] = useState([])
+  const [attendance, setAttendance] = useState([])
   const [search, setSearch] = useState('')
+  const [filterType, setFilterType] = useState('ALL') // 'ALL' | 'EXCLUDED' | 'REGULAR'
   const [showAddModal, setShowAddModal] = useState(false)
   const [showBulkModal, setShowBulkModal] = useState(false)
   
@@ -19,17 +22,27 @@ export default function StudentsManagement() {
 
   const [loading, setLoading] = useState(false)
 
-  const loadStudents = async () => {
+  const loadData = async () => {
     try {
       const data = await dataService.getStudents()
+      const allSessions = await dataService.getSessions()
+      
+      let allAttendance = []
+      for (const sess of allSessions) {
+        const sessAtt = await dataService.getAttendanceBySession(sess.id)
+        allAttendance = [...allAttendance, ...sessAtt]
+      }
+
       setStudents(data)
+      setSessions(allSessions)
+      setAttendance(allAttendance)
     } catch (err) {
       console.error(err)
     }
   }
 
   useEffect(() => {
-    loadStudents()
+    loadData()
   }, [])
 
   const handleAddStudent = async (e) => {
@@ -50,7 +63,7 @@ export default function StudentsManagement() {
       setEmail('')
       setPhone('')
       setShowAddModal(false)
-      loadStudents()
+      loadData()
     } catch (err) {
       alert('خطأ في إضافة الطالب: ' + err.message)
     } finally {
@@ -78,7 +91,7 @@ export default function StudentsManagement() {
       await dataService.bulkAddStudents(listToInsert)
       setBulkText('')
       setShowBulkModal(false)
-      loadStudents()
+      loadData()
     } catch (err) {
       alert('خطأ في إضافة القائمة: ' + err.message)
     } finally {
@@ -90,7 +103,7 @@ export default function StudentsManagement() {
     if (window.confirm(`هل أنت تأكد من حذف الطالب (${name})؟`)) {
       try {
         await dataService.deleteStudent(studentId)
-        loadStudents()
+        loadData()
       } catch (err) {
         alert('خطأ في حذف الطالب: ' + err.message)
       }
@@ -101,19 +114,47 @@ export default function StudentsManagement() {
     if (window.confirm('هل أنت متأكد من مسح جميع الأسماء والحذف بالكامل للبدء بكشف جديد؟')) {
       try {
         await dataService.clearAllStudents()
-        loadStudents()
+        loadData()
       } catch (err) {
         alert('خطأ في مسح الأسماء: ' + err.message)
       }
     }
   }
 
-  const filteredStudents = students.filter(s =>
-    s.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-    s.student_code?.toLowerCase().includes(search.toLowerCase()) ||
-    s.email?.toLowerCase().includes(search.toLowerCase()) ||
-    s.phone?.includes(search)
-  )
+  // Enhance students with stats
+  const studentsWithStats = students.map((student) => {
+    let attended = 0
+    sessions.forEach((session) => {
+      const rec = attendance.find(a => a.student_id === student.id && a.session_id === session.id)
+      if (rec) attended++
+    })
+    const totalSessions = sessions.length
+    const absentCount = totalSessions - attended
+    const isExcluded = absentCount > 3
+    return {
+      ...student,
+      attended,
+      absentCount,
+      totalSessions,
+      isExcluded
+    }
+  })
+
+  const excludedCount = studentsWithStats.filter(s => s.isExcluded).length
+
+  const filteredStudents = studentsWithStats.filter(s => {
+    const matchesSearch =
+      s.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+      s.student_code?.toLowerCase().includes(search.toLowerCase()) ||
+      s.email?.toLowerCase().includes(search.toLowerCase()) ||
+      s.phone?.includes(search)
+
+    if (!matchesSearch) return false
+
+    if (filterType === 'EXCLUDED') return s.isExcluded
+    if (filterType === 'REGULAR') return !s.isExcluded
+    return true
+  })
 
   return (
     <div className="space-y-6">
@@ -124,7 +165,7 @@ export default function StudentsManagement() {
             <Users className="w-7 h-7 text-[#0072bc]" />
             إدارة كشف الطلاب ({students.length} طالب)
           </h1>
-          <p className="text-slate-500 text-sm mt-1">إضافة، تعديل وتخصيص أسماء وإيميلات طلاب الدورة التدريبية</p>
+          <p className="text-slate-500 text-sm mt-1">إضافة، متابعة الحضور والغياب ورصد الطلاب المستثنين (أكثر من 3 أيام غياب)</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -157,16 +198,46 @@ export default function StudentsManagement() {
         </div>
       </div>
 
-      {/* Search Input */}
-      <div className="relative">
-        <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="ابحث بالاسم، الإيميل، رقم الجوال، أو الرمز التدريبي..."
-          className="w-full bg-white border border-slate-200 rounded-2xl py-3.5 pr-12 pl-4 text-slate-900 text-sm outline-none focus:border-[#0072bc] shadow-sm transition"
-        />
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col md:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="ابحث بالاسم، الإيميل، رقم الجوال، أو الرمز التدريبي..."
+            className="w-full bg-white border border-slate-200 rounded-2xl py-3.5 pr-12 pl-4 text-slate-900 text-sm outline-none focus:border-[#0072bc] shadow-sm transition"
+          />
+        </div>
+
+        <div className="flex items-center gap-1.5 bg-white border border-slate-200 p-1.5 rounded-2xl text-xs font-bold shadow-sm shrink-0">
+          <button
+            onClick={() => setFilterType('ALL')}
+            className={`px-3 py-2 rounded-xl transition cursor-pointer ${
+              filterType === 'ALL' ? 'bg-[#0072bc] text-white' : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            جميع الطلاب
+          </button>
+          <button
+            onClick={() => setFilterType('EXCLUDED')}
+            className={`px-3 py-2 rounded-xl transition flex items-center gap-1 cursor-pointer ${
+              filterType === 'EXCLUDED' ? 'bg-rose-600 text-white' : 'text-rose-600 hover:bg-rose-50'
+            }`}
+          >
+            <UserX className="w-3.5 h-3.5" />
+            المستثنون ({excludedCount})
+          </button>
+          <button
+            onClick={() => setFilterType('REGULAR')}
+            className={`px-3 py-2 rounded-xl transition cursor-pointer ${
+              filterType === 'REGULAR' ? 'bg-emerald-600 text-white' : 'text-emerald-700 hover:bg-emerald-50'
+            }`}
+          >
+            المنتظمون
+          </button>
+        </div>
       </div>
 
       {/* Students List - Mobile Cards (< md) & Desktop Table (>= md) */}
@@ -176,20 +247,33 @@ export default function StudentsManagement() {
           {filteredStudents.length === 0 ? (
             <div className="p-8 text-center text-slate-400 space-y-2">
               <Users className="w-10 h-10 mx-auto text-slate-300 mb-2" />
-              <p className="font-semibold text-slate-600">لا يوجد طلاب في الكشف حالياً.</p>
-              <p className="text-xs">اضغط على "إضافة طالب مفرد" أو "لصق قائمة طلاب" للبدء!</p>
+              <p className="font-semibold text-slate-600">لا يوجد طلاب مطابقون للبحث والتصفية.</p>
             </div>
           ) : (
             filteredStudents.map((student, index) => (
-              <div key={student.id} className="p-4 space-y-3 hover:bg-slate-50/50 transition">
+              <div
+                key={student.id}
+                className={`p-4 space-y-3 transition ${
+                  student.isExcluded ? 'bg-rose-50/60 border-r-4 border-r-rose-500' : 'hover:bg-slate-50/50'
+                }`}
+              >
                 {/* Header: Avatar, Name & Actions */}
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-200 text-[#0072bc] font-black flex items-center justify-center text-sm shrink-0">
+                    <div className={`w-10 h-10 rounded-xl font-black flex items-center justify-center text-sm shrink-0 border ${
+                      student.isExcluded ? 'bg-rose-100 border-rose-300 text-rose-700' : 'bg-sky-50 border-sky-200 text-[#0072bc]'
+                    }`}>
                       {student.full_name?.charAt(0)}
                     </div>
                     <div className="min-w-0">
-                      <h4 className="font-bold text-slate-900 text-sm truncate">{student.full_name}</h4>
+                      <h4 className="font-bold text-slate-900 text-sm truncate flex items-center gap-1.5">
+                        <span>{student.full_name}</span>
+                        {student.isExcluded && (
+                          <span className="px-2 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-black">
+                            مستثنى
+                          </span>
+                        )}
+                      </h4>
                       <span className="text-[11px] text-slate-400"># {index + 1}</span>
                     </div>
                   </div>
@@ -201,6 +285,17 @@ export default function StudentsManagement() {
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
+                </div>
+
+                {/* Absence Metric & Status */}
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                  <span className="text-slate-600 font-bold">أيام الغياب:</span>
+                  <span className={`px-2 py-0.5 rounded font-black ${
+                    student.isExcluded ? 'bg-rose-200 text-rose-900' : 'bg-emerald-100 text-emerald-800'
+                  }`}>
+                    {student.absentCount} من {student.totalSessions} جلسة
+                    {student.isExcluded && ' ⚠️ (يتجاوز 3 أيام)'}
+                  </span>
                 </div>
 
                 {/* Badges: PIN and Code */}
@@ -255,10 +350,10 @@ export default function StudentsManagement() {
               <tr>
                 <th className="px-6 py-4">#</th>
                 <th className="px-6 py-4">اسم الطالب الكامل</th>
-                <th className="px-6 py-4">البريد الإلكتروني (Email)</th>
-                <th className="px-6 py-4">رقم الجوال</th>
-                <th className="px-6 py-4">الرمز التدريبي (Code)</th>
-                <th className="px-6 py-4 font-bold text-amber-600">الرمز الخاص (PIN)</th>
+                <th className="px-6 py-4">البريد الإلكتروني</th>
+                <th className="px-6 py-4">الرمز التدريبي</th>
+                <th className="px-6 py-4 text-center">أيام الغياب</th>
+                <th className="px-6 py-4 text-center">حالة الاستثناء</th>
                 <th className="px-6 py-4 text-center">إجراءات</th>
               </tr>
             </thead>
@@ -269,49 +364,58 @@ export default function StudentsManagement() {
                     <div className="space-y-2">
                       <Users className="w-10 h-10 mx-auto text-slate-300 mb-2" />
                       <p className="font-semibold text-slate-600">لا يوجد طلاب في الكشف حالياً.</p>
-                      <p className="text-xs">اضغط على "إضافة طالب مفرد" أو "لصق قائمة طلاب" للبدء بإضافة طلاب دورك!</p>
                     </div>
                   </td>
                 </tr>
               ) : (
                 filteredStudents.map((student, index) => (
-                  <tr key={student.id} className="hover:bg-slate-50 transition">
+                  <tr
+                    key={student.id}
+                    className={`transition ${
+                      student.isExcluded
+                        ? 'bg-rose-50/70 hover:bg-rose-100/70 border-r-4 border-r-rose-500'
+                        : 'hover:bg-slate-50'
+                    }`}
+                  >
                     <td className="px-6 py-4 text-slate-400 text-xs">{index + 1}</td>
                     <td className="px-6 py-4 font-bold text-slate-900 flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-sky-50 border border-sky-200 text-[#0072bc] font-black flex items-center justify-center text-sm">
+                      <div className={`w-9 h-9 rounded-xl font-black flex items-center justify-center text-sm border ${
+                        student.isExcluded ? 'bg-rose-100 border-rose-300 text-rose-700' : 'bg-sky-50 border-sky-200 text-[#0072bc]'
+                      }`}>
                         {student.full_name?.charAt(0)}
                       </div>
-                      <span>{student.full_name}</span>
+                      <div className="flex flex-col">
+                        <span>{student.full_name}</span>
+                        {student.phone && <span className="text-xs text-slate-400 font-normal dir-ltr text-right">{student.phone}</span>}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-slate-600 text-xs dir-ltr text-right font-medium">
-                      {student.email ? (
-                        <span className="flex items-center justify-end gap-1.5 text-slate-600">
-                          <Mail className="w-3.5 h-3.5 text-[#0072bc]" />
-                          {student.email}
-                        </span>
-                      ) : (
-                        <span className="text-slate-400 italic">غير محدد</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-slate-600 text-xs dir-ltr text-right font-medium">
-                      {student.phone ? (
-                        <span className="flex items-center justify-end gap-1.5 text-slate-600">
-                          <Phone className="w-3.5 h-3.5 text-emerald-600" />
-                          {student.phone}
-                        </span>
-                      ) : (
-                        <span className="text-slate-400 italic">غير محدد</span>
-                      )}
+                      {student.email || <span className="text-slate-400 italic">غير محدد</span>}
                     </td>
                     <td className="px-6 py-4 font-mono text-[#0072bc] text-xs font-bold">
                       <span className="px-2.5 py-1 rounded-lg bg-sky-50 border border-sky-200">
                         {student.student_code}
                       </span>
                     </td>
-                    <td className="px-6 py-4 font-mono text-amber-700 text-xs font-bold dir-ltr text-right">
-                      <span className="px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 tracking-wider">
-                        {student.passcode || student.student_code?.replace('STU-', '') || '1234'}
+                    <td className="px-6 py-4 text-center font-bold">
+                      <span className={`px-2.5 py-1 rounded-lg text-xs font-black ${
+                        student.absentCount > 3 ? 'bg-rose-200 text-rose-900' : 'bg-slate-100 text-slate-700'
+                      }`}>
+                        {student.absentCount} من {student.totalSessions} أيام
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-center font-bold">
+                      {student.isExcluded ? (
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-rose-600 text-white font-black text-xs shadow-xs">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          مستثنى (غياب &gt; 3 أيام)
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold text-xs">
+                          <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                          منتظم
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <button
