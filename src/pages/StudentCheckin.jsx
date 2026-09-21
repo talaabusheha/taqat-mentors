@@ -173,51 +173,58 @@ export default function StudentCheckin() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0b1329] text-white flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-[#0b1329] text-white flex flex-col items-center justify-center p-3 sm:p-6 relative overflow-x-hidden py-8">
       {/* Background Orbs */}
       <div className="absolute -top-20 -right-20 w-80 h-80 bg-sky-600/15 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="w-full max-w-md bg-slate-900/90 backdrop-blur-xl border border-sky-900/40 rounded-3xl p-6 md:p-8 shadow-2xl relative z-10">
+      <div className="w-full max-w-md bg-slate-900/90 backdrop-blur-xl border border-sky-900/40 rounded-3xl p-5 sm:p-7 md:p-8 shadow-2xl relative z-10 my-auto">
         <div className="text-center mb-6">
           <div className="mb-3 inline-block">
             <BrandLogo size="md" />
           </div>
-          <br />
-          <span className="px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/30 text-sky-400 text-xs font-bold inline-block mb-2">
-            تسجيل الحضور الإلكتروني
-          </span>
-          <h1 className="text-xl font-bold text-white">
-            {session?.title || 'المحاضرة التدريبية المباشرة'}
-          </h1>
+          <div>
+            <span className="px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/30 text-sky-400 text-[11px] sm:text-xs font-bold inline-block mb-2">
+              تسجيل الحضور الإلكتروني
+            </span>
+            <h1 className="text-lg sm:text-xl font-bold text-white leading-snug px-2">
+              {session?.title || 'المحاضرة التدريبية المباشرة'}
+            </h1>
+          </div>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="flex bg-slate-800/80 p-1 rounded-2xl mb-6 border border-slate-700/60 text-xs font-bold">
+        {/* Tab Switcher - Fully Responsive for Mobile */}
+        <div className="grid grid-cols-2 gap-1.5 bg-slate-800/80 p-1.5 rounded-2xl mb-6 border border-slate-700/60">
           <button
             type="button"
             onClick={() => { setActiveTab('checkin'); setError(''); }}
-            className={`flex-1 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`py-2.5 px-2 rounded-xl transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer text-center ${
               activeTab === 'checkin'
-                ? 'bg-sky-600 text-white shadow shadow-sky-600/30'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-sky-600 text-white shadow shadow-sky-600/30 font-extrabold'
+                : 'text-slate-400 hover:text-white font-medium'
             }`}
           >
-            <CheckCircle className="w-4 h-4 text-amber-400" />
-            <span>تأكيد الحضور (مع الـ QR)</span>
+            <CheckCircle className="w-4 h-4 text-amber-400 shrink-0" />
+            <span className="text-[11px] sm:text-xs leading-tight">
+              <span className="hidden sm:inline">تأكيد الحضور (مع الـ QR)</span>
+              <span className="sm:hidden">تأكيد الحضور (QR)</span>
+            </span>
           </button>
 
           <button
             type="button"
             onClick={() => { setActiveTab('register'); setError(''); }}
-            className={`flex-1 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`py-2.5 px-2 rounded-xl transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer text-center ${
               activeTab === 'register'
-                ? 'bg-amber-600 text-white shadow shadow-amber-600/30'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-amber-600 text-white shadow shadow-amber-600/30 font-extrabold'
+                : 'text-slate-400 hover:text-white font-medium'
             }`}
           >
-            <UserPlus className="w-4 h-4" />
-            <span>طالب جديد؟ سجل بياناتك</span>
+            <UserPlus className="w-4 h-4 shrink-0" />
+            <span className="text-[11px] sm:text-xs leading-tight">
+              <span className="hidden sm:inline">طالب جديد؟ سجل بياناتك</span>
+              <span className="sm:hidden">تسجيل طالب جديد</span>
+            </span>
           </button>
         </div>
 
@@ -249,7 +256,7 @@ export default function StudentCheckin() {
                     setEnteredPasscode('')
                   }
                 }}
-                className="w-full bg-slate-800 border border-slate-700 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 rounded-2xl py-3.5 px-4 text-white text-sm outline-none transition cursor-pointer"
+                className="w-full bg-slate-800 border border-slate-700 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 rounded-2xl py-3.5 px-3.5 text-white text-base sm:text-sm outline-none transition cursor-pointer"
               >
                 <option value="">-- اضغط لاختيار اسمك --</option>
                 {students.map((student) => (
@@ -265,31 +272,33 @@ export default function StudentCheckin() {
                 كلمة المرور / الرمز الخاص بك (Code / PIN)
               </label>
               <div className="relative">
-                <KeyRound className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                <KeyRound className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 pointer-events-none" />
                 <input
                   type="password"
                   required
                   value={enteredPasscode}
                   onChange={(e) => setEnteredPasscode(e.target.value)}
                   placeholder="أدخل الرمز المخصص لك (مثال: 4829)"
-                  className="w-full bg-slate-800 border border-slate-700 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 rounded-2xl py-3.5 pr-12 pl-4 text-white text-sm outline-none transition font-mono tracking-widest"
+                  className={`w-full bg-slate-800 border border-slate-700 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 rounded-2xl py-3.5 pr-12 pl-4 text-white text-base sm:text-sm outline-none transition ${
+                    enteredPasscode ? 'font-mono tracking-widest' : 'font-sans'
+                  }`}
                 />
               </div>
-              <p className="text-[11px] text-slate-500 mt-1.5">
-                * أدخل الرمز المكون من 4 أرقام الذي أعطاك إياه الموقع عند تسجيل بياناتك أول مرة.
+              <p className="text-[11px] text-slate-400 mt-1.5 leading-normal">
+                * أدخل الرمز المكون من 4 أرقام الذي أعطاك إياه الموقع عند تسجيل بياناتك.
               </p>
             </div>
 
             <button
               type="submit"
               disabled={submitting || !selectedStudentId || !enteredPasscode}
-              className="w-full py-4 px-4 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 active:scale-[0.99] text-white font-bold rounded-2xl shadow-lg shadow-sky-600/25 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 text-base"
+              className="w-full py-3.5 sm:py-4 px-4 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 active:scale-[0.99] text-white font-bold rounded-2xl shadow-lg shadow-sky-600/25 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 text-sm sm:text-base"
             >
               {submitting ? (
                 <span>جاري التحقق والتسجيل...</span>
               ) : (
                 <>
-                  <CheckCircle className="w-5 h-5" />
+                  <CheckCircle className="w-5 h-5 shrink-0 text-amber-400" />
                   <span>تأكيد الحضور في القاعة</span>
                 </>
               )}
@@ -308,18 +317,18 @@ export default function StudentCheckin() {
                 value={regFullName}
                 onChange={(e) => setRegFullName(e.target.value)}
                 placeholder="مثال: أحمد عبد الله الشمري"
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 px-4 text-white text-sm outline-none focus:border-sky-500"
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 px-4 text-white text-base sm:text-sm outline-none focus:border-sky-500"
               />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">رقم الجوال</label>
               <input
-                type="text"
+                type="tel"
                 value={regPhone}
                 onChange={(e) => setRegPhone(e.target.value)}
                 placeholder="0501234567"
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 px-4 text-white text-sm outline-none focus:border-sky-500 dir-ltr text-right"
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 px-4 text-white text-base sm:text-sm outline-none focus:border-sky-500 dir-ltr text-right"
               />
             </div>
 
@@ -330,22 +339,22 @@ export default function StudentCheckin() {
                 value={regEmail}
                 onChange={(e) => setRegEmail(e.target.value)}
                 placeholder="student@gmail.com"
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 px-4 text-white text-sm outline-none focus:border-sky-500 dir-ltr text-right"
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 px-4 text-white text-base sm:text-sm outline-none focus:border-sky-500 dir-ltr text-right"
               />
             </div>
 
             <button
               type="submit"
               disabled={submitting || !regFullName}
-              className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 text-sm mt-2"
+              className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 text-sm sm:text-base mt-2"
             >
-              {submitting ? 'جاري إنشاء حسابك...' : 'حفظ البيانات والحصول على الرمز الخاص (PIN)'}
+              {submitting ? 'جاري إنشاء حسابك...' : 'حفظ البيانات والحصول على الرمز (PIN)'}
             </button>
           </form>
         )}
 
         <div className="mt-6 pt-4 border-t border-slate-800/80 text-center text-[11px] text-slate-500 flex items-center justify-center gap-1.5">
-          <ShieldCheck className="w-4 h-4 text-sky-400" />
+          <ShieldCheck className="w-4 h-4 text-sky-400 shrink-0" />
           <span>نظام طاقات المعتمد لحضور طلاب الدورة التدريبية</span>
         </div>
       </div>

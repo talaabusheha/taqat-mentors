@@ -1,10 +1,11 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom'
 import { dataService } from '../../services/dataService'
 import BrandLogo from './BrandLogo'
-import { LayoutDashboard, Users, PlusCircle, FileSpreadsheet, LogOut, ExternalLink, Sparkles } from 'lucide-react'
+import { LayoutDashboard, Users, PlusCircle, FileSpreadsheet, LogOut, ExternalLink, Sparkles, Menu, X } from 'lucide-react'
 
 export default function AdminLayout() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -22,13 +23,33 @@ export default function AdminLayout() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col md:flex-row">
+      {/* Mobile Top Header */}
+      <header className="md:hidden bg-white border-b border-slate-200 p-4 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+        <BrandLogo size="sm" />
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="p-2 text-slate-700 hover:text-slate-900 rounded-xl bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
+          aria-label="القائمة"
+        >
+          {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </button>
+      </header>
+
       {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 bg-white border-b md:border-b-0 md:border-l border-slate-200 p-5 flex flex-col justify-between shrink-0 shadow-sm">
+      <aside className={`
+        fixed inset-y-0 right-0 z-40 w-72 bg-white border-l border-slate-200 p-5 flex flex-col justify-between shadow-2xl transition-transform duration-200 ease-in-out md:static md:translate-x-0 md:w-64 md:shadow-sm md:z-auto shrink-0
+        ${mobileMenuOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}
+      `}>
         <div>
           {/* Official TAQAT Brand Header */}
-          <div className="mb-8 px-2 py-1 border-b border-slate-100 pb-4">
-            <BrandLogo size="md" />
-            <p className="text-[11px] text-slate-500 mt-2 font-semibold">لوحة الـ Mentor لـ إدارة الحضور</p>
+          <div className="mb-6 md:mb-8 px-2 py-1 border-b border-slate-100 pb-4 flex items-center justify-between md:block">
+            <div>
+              <BrandLogo size="md" />
+              <p className="text-[11px] text-slate-500 mt-2 font-semibold">لوحة الـ Mentor لـ إدارة الحضور</p>
+            </div>
+            <button onClick={() => setMobileMenuOpen(false)} className="md:hidden p-1 text-slate-400 hover:text-slate-600 cursor-pointer">
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
           {/* Navigation Links */}
@@ -40,6 +61,7 @@ export default function AdminLayout() {
                 <Link
                   key={item.path}
                   to={item.path}
+                  onClick={() => setMobileMenuOpen(false)}
                   className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition ${
                     isActive
                       ? 'bg-sky-50 text-[#0072bc] border-r-4 border-[#0072bc] shadow-sm font-extrabold'
@@ -59,6 +81,7 @@ export default function AdminLayout() {
           <Link
             to="/checkin"
             target="_blank"
+            onClick={() => setMobileMenuOpen(false)}
             className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200 transition"
           >
             <span className="flex items-center gap-2">
@@ -78,8 +101,16 @@ export default function AdminLayout() {
         </div>
       </aside>
 
+      {/* Mobile Backdrop */}
+      {mobileMenuOpen && (
+        <div
+          onClick={() => setMobileMenuOpen(false)}
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-30 md:hidden"
+        />
+      )}
+
       {/* Main Content Viewport */}
-      <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
+      <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl mx-auto w-full">
         <Outlet />
       </main>
     </div>
