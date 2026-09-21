@@ -169,9 +169,87 @@ export default function StudentsManagement() {
         />
       </div>
 
-      {/* Students Table */}
+      {/* Students List - Mobile Cards (< md) & Desktop Table (>= md) */}
       <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
+        {/* Mobile View: Cards Layout */}
+        <div className="block md:hidden divide-y divide-slate-100">
+          {filteredStudents.length === 0 ? (
+            <div className="p-8 text-center text-slate-400 space-y-2">
+              <Users className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+              <p className="font-semibold text-slate-600">لا يوجد طلاب في الكشف حالياً.</p>
+              <p className="text-xs">اضغط على "إضافة طالب مفرد" أو "لصق قائمة طلاب" للبدء!</p>
+            </div>
+          ) : (
+            filteredStudents.map((student, index) => (
+              <div key={student.id} className="p-4 space-y-3 hover:bg-slate-50/50 transition">
+                {/* Header: Avatar, Name & Actions */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-200 text-[#0072bc] font-black flex items-center justify-center text-sm shrink-0">
+                      {student.full_name?.charAt(0)}
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="font-bold text-slate-900 text-sm truncate">{student.full_name}</h4>
+                      <span className="text-[11px] text-slate-400"># {index + 1}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleDeleteStudent(student.id, student.full_name)}
+                    className="p-2 rounded-xl text-rose-600 bg-rose-50 hover:bg-rose-100 transition shrink-0"
+                    title="حذف الطالب"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Badges: PIN and Code */}
+                <div className="flex items-center gap-2 text-xs">
+                  <div className="flex-1 bg-amber-50 border border-amber-200/80 rounded-xl p-2 text-center">
+                    <span className="text-[10px] text-amber-700 block font-semibold mb-0.5">الرمز الخاص (PIN)</span>
+                    <span className="font-mono text-amber-800 font-bold text-sm tracking-wider">
+                      {student.passcode || student.student_code?.replace('STU-', '') || '1234'}
+                    </span>
+                  </div>
+
+                  <div className="flex-1 bg-sky-50 border border-sky-200/80 rounded-xl p-2 text-center">
+                    <span className="text-[10px] text-[#0072bc] block font-semibold mb-0.5">الرمز التدريبي (Code)</span>
+                    <span className="font-mono text-[#0072bc] font-bold text-xs">
+                      {student.student_code}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Contact Info */}
+                {(student.email || student.phone) && (
+                  <div className="pt-2 border-t border-slate-100 space-y-1.5 text-xs text-slate-600">
+                    {student.phone && (
+                      <div className="flex items-center justify-between text-slate-600">
+                        <span className="text-slate-400 text-[11px]">الجوال:</span>
+                        <span className="font-medium dir-ltr flex items-center gap-1.5">
+                          <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                          {student.phone}
+                        </span>
+                      </div>
+                    )}
+                    {student.email && (
+                      <div className="flex items-center justify-between text-slate-600">
+                        <span className="text-slate-400 text-[11px]">الإيميل:</span>
+                        <span className="font-medium dir-ltr flex items-center gap-1.5 truncate max-w-[200px]">
+                          <Mail className="w-3.5 h-3.5 text-[#0072bc] shrink-0" />
+                          <span className="truncate">{student.email}</span>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop View: Full Table (>= md) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-right text-sm text-slate-700">
             <thead className="bg-slate-50 text-slate-500 text-xs font-bold uppercase border-b border-slate-200">
               <tr>
@@ -238,7 +316,7 @@ export default function StudentsManagement() {
                     <td className="px-6 py-4 text-center">
                       <button
                         onClick={() => handleDeleteStudent(student.id, student.full_name)}
-                        className="p-2 rounded-xl text-rose-600 hover:bg-rose-50 transition"
+                        className="p-2 rounded-xl text-rose-600 hover:bg-rose-50 transition cursor-pointer"
                         title="حذف الطالب"
                       >
                         <Trash2 className="w-4 h-4" />
