@@ -2,11 +2,11 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { dataService } from '../services/dataService'
 import BrandLogo from '../components/layout/BrandLogo'
-import { Lock, User, LogIn, Sparkles } from 'lucide-react'
+import { Lock, User, LogIn } from 'lucide-react'
 
 export default function AdminLogin() {
-  const [username, setUsername] = useState('admin')
-  const [password, setPassword] = useState('admin123')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const navigate = useNavigate()
@@ -58,7 +58,7 @@ export default function AdminLogin() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full bg-slate-800/80 border border-slate-700/80 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 rounded-xl py-3 pr-12 pl-4 text-white text-sm outline-none transition"
-                placeholder="admin"
+                placeholder="اسم المستخدم"
               />
             </div>
           </div>
@@ -95,11 +95,6 @@ export default function AdminLogin() {
             )}
           </button>
         </form>
-
-        <div className="mt-8 pt-6 border-t border-slate-800 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-          <Sparkles className="w-4 h-4 text-amber-400" />
-          <span>بيانات التجربة المباشرة (admin / admin123)</span>
-        </div>
       </div>
     </div>
   )
