@@ -26,14 +26,7 @@ const setLocalData = (key, data) => {
 export const dataService = {
   // Auth Check
   async loginAdmin(username, password) {
-    // 1. Allow demo login (admin / admin123) directly for instant access
-    if ((username === 'admin' || username === 'mentor@taqat.sa' || username === 'admin@taqat.sa') && password === 'admin123') {
-      const user = { id: 'admin-1', email: 'mentor@taqat.sa', role: 'mentor' }
-      localStorage.setItem(STORAGE_KEYS.AUTH, JSON.stringify(user))
-      return { user }
-    }
-
-    // 2. If Supabase is configured, attempt Supabase Auth login
+    // Attempt Supabase Auth login if configured
     if (isSupabaseConfigured()) {
       try {
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -50,7 +43,7 @@ export const dataService = {
       }
     }
 
-    throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة')
+    throw new Error('لم يتم إعداد اتصال Supabase أو بيانات الدخول غير صحيحة')
   },
 
   getCurrentAdmin() {

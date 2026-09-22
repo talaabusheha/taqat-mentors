@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { dataService } from '../services/dataService'
-import { QrCode, Play, StopCircle, RefreshCw, Users, CheckCircle, XCircle, UserCheck, Clock, ExternalLink, Sparkles, Trash2 } from 'lucide-react'
+import { getCurrentQRToken, getSecondsRemainingInCycle } from '../utils/qrSecurity'
+import { QrCode, Play, StopCircle, RefreshCw, Users, CheckCircle, XCircle, UserCheck, Clock, ExternalLink, Sparkles, Trash2, ShieldAlert, Zap } from 'lucide-react'
 
 export default function SessionQR() {
   const { id } = useParams()
@@ -13,6 +14,10 @@ export default function SessionQR() {
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
   const [filterTab, setFilterTab] = useState('ALL') // 'ALL' | 'PRESENT' | 'ABSENT'
+
+  // Dynamic QR Token State
+  const [qrToken, setQrToken] = useState('')
+  const [secondsLeft, setSecondsLeft] = useState(() => getSecondsRemainingInCycle())
 
   // New Session Form State
   const [title, setTitle] = useState('')
@@ -41,6 +46,7 @@ export default function SessionQR() {
           const currentAttendance = await dataService.getAttendanceBySession(currentSession.id)
           setSession(currentSession)
           setAttendance(currentAttendance)
+          setQrToken(getCurrentQRToken(currentSession.id))
         } else {
           setSession(null)
         }
@@ -66,6 +72,19 @@ export default function SessionQR() {
 
     return () => clearInterval(interval)
   }, [id, session?.id])
+
+  // Timer Effect for 10-Second Dynamic QR Token Refresh
+  useEffect(() => {
+    if (!session?.id || session.status !== 'ACTIVE') return
+
+    const timer = setInterval(() => {
+      const rem = getSecondsRemainingInCycle()
+      setSecondsLeft(rem)
+      setQrToken(getCurrentQRToken(session.id))
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [session?.id, session?.status])
 
   const handleCreateSession = async (e) => {
     e.preventDefault()
@@ -123,7 +142,7 @@ export default function SessionQR() {
 
   // Generate public checkin link for students
   const checkinUrl = session
-    ? `${window.location.origin}/checkin/${session.id}`
+    ? `${window.location.origin}/checkin/${session.id}${qrToken ? `?t=${qrToken}` : ''}`
     : ''
 
   if (loading) {
@@ -248,14 +267,35 @@ export default function SessionQR() {
           </div>
         </div>
 
-        {/* Big Projection QR Box */}
-        <div className="bg-white p-6 md:p-8 rounded-3xl inline-block shadow-lg my-4 border-2 border-slate-200">
+        {/* Big Projection QR Box with Dynamic Refresh Indicator */}
+        <div className="bg-white p-6 md:p-8 rounded-3xl inline-block shadow-lg my-4 border-2 border-slate-200 relative group max-w-sm w-full">
           <QRCodeSVG
             value={checkinUrl}
             size={260}
             level="H"
             includeMargin={true}
+            className="mx-auto"
           />
+
+          {session.status === 'ACTIVE' && (
+            <div className="mt-4 pt-3 border-t border-slate-100 flex flex-col items-center gap-2">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                <Zap className="w-4 h-4 text-amber-500 animate-bounce" />
+                <span>رمز حماية حي يتجدد تلقائياً</span>
+                <span className="font-mono bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md text-xs font-extrabold">
+                  {secondsLeft}s
+                </span>
+              </div>
+
+              {/* Progress bar for 10-second countdown */}
+              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden dir-ltr">
+                <div
+                  className="h-full bg-gradient-to-r from-[#0072bc] to-amber-400 transition-all duration-1000 ease-linear rounded-full"
+                  style={{ width: `${(secondsLeft / 10) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="mt-4 max-w-md mx-auto">

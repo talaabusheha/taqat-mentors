@@ -1,17 +1,21 @@
 import React, { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { dataService } from '../services/dataService'
-import { QrCode, CheckCircle, User, ShieldCheck, KeyRound, UserPlus, AlertTriangle, Sparkles, Copy, Check } from 'lucide-react'
+import { validateQRToken } from '../utils/qrSecurity'
+import { QrCode, CheckCircle, User, ShieldCheck, KeyRound, UserPlus, AlertTriangle, Sparkles, Copy, Check, Clock, RefreshCw } from 'lucide-react'
 
 import BrandLogo from '../components/layout/BrandLogo'
 
 export default function StudentCheckin() {
   const { sessionId } = useParams()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const qrTokenParam = searchParams.get('t')
 
   const [session, setSession] = useState(null)
   const [students, setStudents] = useState([])
   const [activeTab, setActiveTab] = useState('checkin') // 'checkin' | 'register'
+  const [isTokenValid, setIsTokenValid] = useState(true)
 
   // Checkin state
   const [selectedStudentId, setSelectedStudentId] = useState('')
@@ -34,13 +38,26 @@ export default function StudentCheckin() {
       const allStudents = await dataService.getStudents()
       setStudents(allStudents)
 
+      let currentSession = null
       if (sessionId) {
-        const sess = await dataService.getSessionById(sessionId)
-        setSession(sess)
+        currentSession = await dataService.getSessionById(sessionId)
+        setSession(currentSession)
       } else {
         const sessions = await dataService.getSessions()
         const active = sessions.find(s => s.status === 'ACTIVE')
-        setSession(active || null)
+        currentSession = active || null
+        setSession(currentSession)
+      }
+
+      // Validate dynamic QR token if present
+      if (currentSession?.id && qrTokenParam) {
+        const validation = validateQRToken(currentSession.id, qrTokenParam)
+        if (!validation.valid) {
+          setIsTokenValid(false)
+          setError('عذراً، رمز QR الذي قمت بمسحه منتهي الصلاحية! يرجى إعادة مسح الرمز الحي المباشر من الشاشة.')
+        } else {
+          setIsTokenValid(true)
+        }
       }
     } catch (err) {
       console.error(err)
@@ -52,7 +69,7 @@ export default function StudentCheckin() {
 
   useEffect(() => {
     loadData()
-  }, [sessionId])
+  }, [sessionId, qrTokenParam])
 
   // Handle New Student Self Registration
   const handleRegisterNewStudent = async (e) => {
@@ -91,6 +108,17 @@ export default function StudentCheckin() {
   // Handle Attendance Check-in with Passcode Verification
   const handleCheckin = async (e) => {
     e.preventDefault()
+
+    // Re-verify token validity at submission time
+    if (session?.id && qrTokenParam) {
+      const validation = validateQRToken(session.id, qrTokenParam)
+      if (!validation.valid) {
+        setIsTokenValid(false)
+        setError('عذراً، انتهت صلاحية هذا الرمز (أكثر من 15 ثانية). يرجى إعادة مسح الرمز المباشر الظاهر على الشاشة.')
+        return
+      }
+    }
+
     if (!selectedStudentId) {
       setError('يرجى اختيار اسمك من القائمة')
       return
