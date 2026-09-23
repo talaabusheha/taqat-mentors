@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { dataService } from '../services/dataService'
-import { getCurrentQRToken, getSecondsRemainingInCycle } from '../utils/qrSecurity'
+import { getCurrentQRToken, getSecondsRemainingInCycle, TOKEN_WINDOW_SECONDS } from '../utils/qrSecurity'
 import { QrCode, Play, StopCircle, RefreshCw, Users, CheckCircle, XCircle, UserCheck, Clock, ExternalLink, Sparkles, Trash2, ShieldAlert, Zap } from 'lucide-react'
 
 export default function SessionQR() {
@@ -281,17 +281,17 @@ export default function SessionQR() {
             <div className="mt-4 pt-3 border-t border-slate-100 flex flex-col items-center gap-2">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
                 <Zap className="w-4 h-4 text-amber-500 animate-bounce" />
-                <span>رمز حماية حي يتجدد تلقائياً</span>
+                <span>رمز حماية حي (يتجدد كل دقيقتين)</span>
                 <span className="font-mono bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md text-xs font-extrabold">
-                  {secondsLeft}s
+                  {Math.floor(secondsLeft / 60)}:{(secondsLeft % 60).toString().padStart(2, '0')}
                 </span>
               </div>
 
-              {/* Progress bar for 10-second countdown */}
+              {/* Progress bar for 2-minute (120s) countdown */}
               <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden dir-ltr">
                 <div
                   className="h-full bg-gradient-to-r from-[#0072bc] to-amber-400 transition-all duration-1000 ease-linear rounded-full"
-                  style={{ width: `${(secondsLeft / 10) * 100}%` }}
+                  style={{ width: `${(secondsLeft / TOKEN_WINDOW_SECONDS) * 100}%` }}
                 />
               </div>
             </div>
