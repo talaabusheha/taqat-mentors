@@ -70,6 +70,17 @@ export const dataService = {
   },
 
   async addStudent(student) {
+    if (student.phone) {
+      const cleanPhone = student.phone.toString().trim().replace(/\D/g, '')
+      if (cleanPhone) {
+        const existingStudents = await this.getStudents()
+        const foundPhone = existingStudents.find(s => s.phone && s.phone.toString().trim().replace(/\D/g, '') === cleanPhone)
+        if (foundPhone) {
+          throw new Error(`رقم الهاتف (${student.phone}) مسجل بالفعل باسم الطالب "${foundPhone.full_name}".`)
+        }
+      }
+    }
+
     if (isSupabaseConfigured()) {
       const { data, error } = await supabase.from('students').insert([student]).select()
       if (error) throw error
@@ -89,8 +100,29 @@ export const dataService = {
   },
 
   async registerStudentSelf({ full_name, email, phone }) {
-    // Generate a 4-digit easy passcode (e.g., 4829)
-    const randomPin = Math.floor(1000 + Math.random() * 9000).toString()
+    if (!phone || !phone.trim()) {
+      throw new Error('يرجى أدخال رقم الجوال لإكمال التسجيل.')
+    }
+
+    const students = await this.getStudents()
+    const cleanPhone = phone.toString().trim().replace(/\D/g, '')
+    
+    if (cleanPhone) {
+      const existing = students.find(s => s.phone && s.phone.toString().trim().replace(/\D/g, '') === cleanPhone)
+      if (existing) {
+        throw new Error(`عذراً، رقم الجوال (${phone}) مسجل بالفعل باسم الطالب "${existing.full_name}". يرجى اختيار اسمك من قائمة المسجلين.`)
+      }
+    }
+
+    // Generate a 4-digit unique passcode (e.g., 4829)
+    let randomPin = ''
+    let isUnique = false
+    let attempts = 0
+    while (!isUnique && attempts < 100) {
+      randomPin = Math.floor(1000 + Math.random() * 9000).toString()
+      isUnique = !students.some(s => (s.passcode === randomPin || s.student_code === `STU-${randomPin}`))
+      attempts++
+    }
     const studentCode = `STU-${randomPin}`
 
     const newStudent = {
@@ -107,13 +139,36 @@ export const dataService = {
   },
 
   async bulkAddStudents(studentsList) {
+    const existingStudents = await this.getStudents()
+    const existingPhones = new Set(
+      existingStudents.map(s => s.phone ? s.phone.toString().trim().replace(/\D/g, '') : '').filter(Boolean)
+    )
+
+    const uniqueList = []
+    const duplicateList = []
+
+    for (let i = 0; i < studentsList.length; i++) {
+      const st = studentsList[i]
+      const cleanP = st.phone ? st.phone.toString().trim().replace(/\D/g, '') : ''
+      if (cleanP && existingPhones.has(cleanP)) {
+        duplicateList.push(st.full_name || st.phone)
+      } else {
+        if (cleanP) existingPhones.add(cleanP)
+        uniqueList.push(st)
+      }
+    }
+
+    if (uniqueList.length === 0) {
+      throw new Error(`جميع الأسماء/الأرقام في القائمة مسجلة بالفعل (${duplicateList.join(', ')})`)
+    }
+
     if (isSupabaseConfigured()) {
-      const { data, error } = await supabase.from('students').insert(studentsList).select()
+      const { data, error } = await supabase.from('students').insert(uniqueList).select()
       if (error) throw error
       return data
     } else {
       const students = getLocalData(STORAGE_KEYS.STUDENTS, INITIAL_STUDENTS)
-      const formatted = studentsList.map((st, i) => ({
+      const formatted = uniqueList.map((st, i) => ({
         id: st.id || `std-${Date.now()}-${i}`,
         full_name: st.full_name,
         email: st.email || '',

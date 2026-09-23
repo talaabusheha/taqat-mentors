@@ -75,6 +75,10 @@ export default function StudentCheckin() {
   const handleRegisterNewStudent = async (e) => {
     e.preventDefault()
     if (!regFullName) return
+    if (!regPhone || !regPhone.trim()) {
+      setError('يرجى أدخال رقم الجوال الخاص بك لإكمال التسجيل.')
+      return
+    }
     setSubmitting(true)
     setError('')
 
@@ -344,9 +348,10 @@ export default function StudentCheckin() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">رقم الجوال</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">رقم الجوال *</label>
               <input
                 type="tel"
+                required
                 value={regPhone}
                 onChange={(e) => setRegPhone(e.target.value)}
                 placeholder="0501234567"
