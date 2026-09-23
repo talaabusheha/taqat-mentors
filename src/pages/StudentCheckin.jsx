@@ -114,7 +114,7 @@ export default function StudentCheckin() {
       const validation = validateQRToken(session.id, qrTokenParam)
       if (!validation.valid) {
         setIsTokenValid(false)
-        setError('عذراً، انتهت صلاحية هذا الرمز (أكثر من 15 ثانية). يرجى إعادة مسح الرمز المباشر الظاهر على الشاشة.')
+        setError('عذراً، انتهت صلاحية هذا الرمز. يرجى إعادة مسح الرمز المباشر الظاهر على الشاشة.')
         return
       }
     }

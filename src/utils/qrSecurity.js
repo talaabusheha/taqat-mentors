@@ -34,17 +34,18 @@ export const getCurrentQRToken = (sessionId) => {
 }
 
 /**
- * Validate incoming QR token against current & immediately previous window (grace period ~2 minutes)
+ * Validate incoming QR token against current & past windows (~10 minutes grace period + clock skew tolerance)
  */
 export const validateQRToken = (sessionId, token) => {
   if (!token) return { valid: false, reason: 'MISSING' }
   
   const currentIdx = getCurrentWindowIndex()
-  const currentToken = encodeToken(sessionId, currentIdx)
-  const previousToken = encodeToken(sessionId, currentIdx - 1)
 
-  if (token === currentToken || token === previousToken) {
-    return { valid: true }
+  // Check past 5 windows (~10 mins) and 1 future window (clock skew tolerance)
+  for (let offset = -1; offset <= 5; offset++) {
+    if (token === encodeToken(sessionId, currentIdx - offset)) {
+      return { valid: true }
+    }
   }
 
   return { valid: false, reason: 'EXPIRED' }
